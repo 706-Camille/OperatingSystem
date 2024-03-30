@@ -60,8 +60,11 @@ __Process 복사__
 --- 
 
 <img width="541" alt="Direct Execution Protocol" src="https://github.com/706-Camille/OperatingSystem/assets/123271815/f90ddd22-d0f4-4c7e-92c4-8495f89ae2d0">  
+  
 Direct Execution은 프로그램을 한 번 수행하면 종료될 때까지 수행하는 방법.  
-하지만 이 방법으로는 지금 구현하려고 하는 CPU 가상화를 구현할 수 없다. 우선 한 번 실행된 프로세스에 대해 제어를 할 수 없으며 Time Sharing을 할 수 없다. 즉 이러한 방법에 어떠한 Limit를 줘야 CPU 가상화를 구현할 수 있게 된다.  
+하지만 이 방법으로는 지금 구현하려고 하는 CPU 가상화를 구현할 수 없다. 우선 한 번 실행된 프로세스에 대해 제어를 할 수 없으며 Time Sharing을 할 수 없다. 즉 이러한 방법에 어떠한 Limit를 줘야 CPU 가상화를 구현할 수 있게 된다. 
+
+#### __Limited Direct Execition__ (하면 안되는일 (보호되어야 하는 일) 제한하기)
   
 CPU의 모드를 분리. User mode, Kernel mode로 상태를 구분하는 것이다. User mode 상태에서는 수행할 수 있는 작업에 제한을 둬서 해당 작업을 수행하려고 하면 오류를 발생시킨다. 이를 보완하기 위해 Kernel mode라는 OS가 실행되는 상태를 만들었고 I/O 요청과 같은 권한이 필요한 작업은 Kernel mode 상태에서 수행하게 된다.  
    
@@ -69,5 +72,77 @@ CPU의 모드를 분리. User mode, Kernel mode로 상태를 구분하는 것이
     
 __process Trap (User Mode) -> OS (Kernel Mode) -> Process (User Mode)__    
    
-Trap명령이 수행되면 프로세스는 program counter, flags, register 정보를 kernel stack에 넣는다. 그런 뒤 return-from-trap 명령이 수행되면 이러한 데이터를 모두 제거한다.  
+Trap명령이 수행되면 프로세스는 program counter, flags, register 정보를 kernel stack에 넣는다. 그런 뒤 return-from-trap 명령이 수행되면 이러한 데이터를 모두 제거한다. 
   
+![06 제한적 Direct Excution_1](https://github.com/706-Camille/OperatingSystem/assets/123271815/8832fbdb-45ba-4716-bc92-1aed39c3897e)
+
+그렇다면 OS는 trap을 어떻게 사용할 수 있을까? OS가 trap을 처리하기 위해선 trap table이라는 것을 사용한다. 이는 부팅할 때 초기화 된다.
+Trap Table에는 소프트웨어적 사건들을 처리하기 위한 함수가 들어있다. 각 함수들마다 System-call number 번호가 정의되어있고 각 System call number를 호출하여 trap을 처리할 수 있다.   
+
+![KakaoTalk_20240330_203154839](https://github.com/706-Camille/OperatingSystem/assets/123271815/70203236-ecc0-44eb-9e7e-53be7a20c1eb)  
+
+Interrupt Service Routine (ISR) 트랩 핸들러 위치 ->  Trap, H/W Interrupt, H/W Exception 처리  
+Interrupt Stack Pointer (ISP) 커널 스택 위치  
+Interrupt (Trap) Vecrtor Pointer 트랩 테이블 사용  
+
+
+1. Exception -> Exception handler
+2. H/W Interrupt -> interrupt timer를 통한 제어 양도
+3. S/W TRAP -> Trap handler
+
+---  
+
+# Scheduling
+
+__Wokrload assumption__
+그럼 스케줄링 정책을 이해하기 위해서 몇 가지 가정을 정의해 보자. 여기서 가정하는 부분의 내용을 wordload라고 부르며 workload를 많이 알 수록 스케줄링 정책을 잘 설계할 수 있습니다. Workload의 뜻을 다시 짚고 가자면 사전적으로는 작업량이라고 볼 수 있고 컴퓨터 과학의 입장에서 보면 하나의 프로세스의 특징들을 고려해 얼마만큼 자원을 필요로 하느냐를 뜻한다. 지금 정의하는 workload 가정들은 비현실적이지만 하나씩 알아가 보며 이러한 가정들을 제거한다.
+
+- 모든 작업은 한 번 실행될 때 실행시간이 동일하다.  
+- 모든 작업은 동시에 도착한다  
+- 작업이 시작되면 끝날 때까지 실행한다.  
+- 모든 작업은 CPU에서만 작동한다. I/O를 발생시키지 않는다.  
+- 모든 작업의 실행시간을 알고 있다.
+
+__스케줄링 정책들을 비교하는 기준__  
+  
+-Turnaround Time (반환 시간)  
+  Turnaround Time = Completion Time - Arrival Time
+  반환 시간은 프로세스가 완료된 시간에서 프로세스가 도착한 시간을 뺀 시간이다. 즉 어떤 프로세스가 완료될 때까지 걸린 시간이라고 보면 된다.
+
+
+-Response Time (응답 시간)  
+  Response Time = FirstRun Time - Arrival Time
+  응답 시간은 프로세스가 처음 실행되는 시간에서 프로세스가 도착한 시간을 뺀 시간이다. 예를 들어 P1 프로세스가 0초에 도착하여 5초에 
+  처음 실행되었다면 응답 시간은 5초가 된다.
+
+## FIFO (First In, First Out)  
+- "모든 작업은 동일한 수행 시간을 갖는다" 가정을 없애면? -> 시간이 많이 필요한 작업이 먼저 수행된다면 뒤에 도착하는 빨리 끝날 수 있는 작업들이 수행되지 못하게 된다. (convoy effect)
+  
+## SJF (Shortest Job First)
+- convoy effect를 해결하는 방법으로 수행시간이 짧은 애들부터 수행.
+- "모든 작업은 동일한 시간에 도착한다" 가정을 없애면? -> response time이 너무 길다. 어떤 작업이 현재 수행되고 있는 작업보다 짧아도 늦게 도착하면 수행되기 위해 기다려야 한다.  
+    
+## STCF (Shortest Time-to-Complition First)  
+- "작업이 시작되면 끝날 때까지 실행한다." 가정을 없애면? -> timer interrupt와 context switch 기능을 추가. STCF는 preempt(선점) 스케줄러. 선점 스케줄러라는 것은 어떤 작업을 수행하는 도중에 다른 작업을 수행할 수 있도록 스케줄링할 수 있는 스케줄러를 말한다. 지금까지의 스케줄러들은 모두 non-preemptive 스케줄러였기 때문에 아까 SJF와 같은 문제가 발생했다.
+  
+## RR (Round Robin)
+- Response Time을 고려하면 Timer Interval을 짧게 하면 할 수록 Response Time을 줄일 수 있다. -> 효율적? NO
+- Context Switching 비용을 고려해서 Timer Interval을 정해야함. 너무 짧게 하면 Overhead가 커진다.
+
+## MFLQ (Multi-Level Feedback Queue)
+- Rule 1 : if Priority(A) > Priority(B), A runs (B doesn't)  
+- Rule 2 : if Priority(A) = Priority(B), A & B run in Round Robin  
+- Rule 3 : When a job enters the system, it is placed at the highest priority (the topmost queue).  
+- Rule 4 (기존의것) :  
+           - (a) If a job uses its allotment while running, its priority is reduced (i.e, it moves down one queue)  
+           - (b) if a job gives up the CPU (for example, by performing an I/O operation) before the allotment is up, it stays at the same priority level(i.e., its allotment is reset) I/O 작업 우선순위 유지, 할당량 리셋
+
+많은 I/OP Job이 존재한다면? -> I/O Job들만 실행 (높은 우선 순위 유지) 서로 주고 받기만 함  
+긴 Job (낮은 우선순위 queue)은 CPU를 사용할 수 없는 상태(starvation)가 발생.   
+
+-Rule 5 (새로운 규칙) : After some time period S, move all the jobs in the system to the topmost queue. 오랜 시간 CPU를 사용하지 못했다면, 우선 순위 상승  
+
+Rule 4 process가 스케쥴러를 속인다면? ex) 10초의 time slice를 가진 스케쥴러에서 의도적으로 9.9초마다 CPU를 양도하는 작업이 들어온다면 계속해서 높은 우선순위를 유지할 것. 이를 해결하기 위해 규칙 4a, 4b를 통합하여 새로운 규칙을 정의.  
+
+-Rule 4 : Once a job uses up its time allotment at a given level (regardless fo how many times it has given up the CPU), its priority is reduced (i.e., it moves down one queue) 작업은 모든 우선순위에서 주어진 time slice를 모두 사용하면 우선순위 감소.
+
