@@ -1,4 +1,4 @@
-# chapter 4 : process  
+# process  
 
 #### process : 실행중인 프로그램으로 정의한다.  
 프로그램은 disk 상에 존재하며 실행을 위한 명령어와 정적 data의 묶음이다. 이 명령어와 데이터 묶음을 읽고 실행하여 프로그램에 생명을 불어넣는 것이 __운영체제__ 이다.  
@@ -146,3 +146,95 @@ Rule 4 process가 스케쥴러를 속인다면? ex) 10초의 time slice를 가�
 
 -Rule 4 : Once a job uses up its time allotment at a given level (regardless fo how many times it has given up the CPU), its priority is reduced (i.e., it moves down one queue) 작업은 모든 우선순위에서 주어진 time slice를 모두 사용하면 우선순위 감소.
 
+## Scheduling: Proportional Share  
+proportional share(비례 지분) 스케줄러. fairness(형평성)을 기준으로 스케줄링.  
+
+### Lottery Scheduling
+- 무작위 추첨, 원하는 비율을 보장 하지 않음.
+- 장시간 실행되면, 목표 비율에 도달 가능성 높아짐 (대수의 법칙)
+
+### Ticket Mechanisms
+- Ticket CUrrency : 국제통화, 지역통화
+- Ticket transfer : CS서버에서 유용. Client가 서버에게 잠시 자신에게 부여된 티켓을 빌려줌으로써, 해당 작업을 빠르게 마치고 반환.   
+- TIcket inflation : 프로세스들이 협력하는 상황에서 사용할 수 있으며 만약 프로세스들이 경쟁 상태라면 의미가 없음. 프로세스들이 서로 협력하는 상황이라고 가정하고 예를 들면 어떤 프로세스가 갑자기 엄청 빠르게 수행되어야 하는 상황이 생긴다. 이 경우 프로세스에게 부여된 티켓 수를 엄청나게 늘려서 CPU를 차지하게 만들 수 있다.
+
+### fairness
+
+A 프로세스 도착시간 0초, 수행 시간 : 10초, 완료 시간 10초 C1 = 10초  
+B 프로세스 도착시간 0초, 수행시간 : 10초, 완료시간 20초 C2 = 20초  
+fairness = C1 / C2 = 10 / 20 = 0.5  
+   
+위와 같은 상황이 최악의 상황입니다. A 프로세스가 모두 끝난 뒤에야 B 프로세스가 동작하기 때문이죠. 그럼 가장 좋은 경우를 살펴보겠습니다.  
+   
+A 프로세스 도착시간 0초, 수행시간 : 10초, 완료시간 19.9999초 C1 = 19.9999초    
+B 프로세스 도착시간 0초, 수행시간 : 10초, 완료시간 20초 C2 = 20초    
+fairness = C1 / C2 = 19.9999 / 20 = 1    
+
+## Stride Scheduling  
+- Deterministic fair-share scheduler
+- stride (보폭) 자신의 티켓수의 반비례
+
+## CFS (Linux Completely Fair Scheduler)
+- virtual runtime (vruntime) : counting 기반 테크닉 사용  
+각 프로세스들은 실행될 때마다 virtual runtime이 누적된다. 스케줄러는 어떤 프로세스를 다음에 실행할지 결정할 때 프로세스들 중 virtual runtime이 가장 작은 프로세스를 선택.
+- CFS가 자주 실행되면? -> context switching 비용 증가 -> bad performance
+- sched latency (예정된 지연시간)
+- MIN_GRANULARITY : time slice가 이 시간 보다 작지 않도록 한다. ( 문맥 교환 최대 비용 결정) 
+  
+![KakaoTalk_20240331_185712561](https://github.com/706-Camille/OperatingSystem/assets/123271815/cd63d3c5-ecf1-4d7c-8898-83970365e670)
+
+![KakaoTalk_20240331_185937849](https://github.com/706-Camille/OperatingSystem/assets/123271815/9ae3ab17-7ae6-4d7d-878d-d9f2aaafd86b)  
+
+---  
+
+# Address Space
+
+## Multiprogramming and Time Sharing
+
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/1cc05937-ff4f-4668-bae7-40c87e5c9f49)
+
+실제로 메모리 가상화를 하면 위의 그림과 같이 여러 개의 프로세스들이 메모리의 일정 부분을 함께 사용하게 된다. 위의 그림과 같이. 그런데 이렇게 여러 프로세스들이 한 번에 메모리에 존재하게 되면 보안 상 문제가 발생할 수 있다. 예를 들어 C 프로세스의 경우 128KB~192KB에 있는 데이터에만 접근해야 하는데 갑자기 B 프로세스의 메모리 공간에 침입해서 데이터를 조작하게 되면 이는 큰 보안상 문제이다. 따라서 이러한 문제를 잘 해결해야 하는 과제가 있습니다. 실제로 이렇게 자신의 메모리 공간 말고 다른 공간에 접근하려고 하면 Segmentation Fault라는 오류가 나타나는 것을 코딩 중에 자주 볼 수 있다.
+
+![KakaoTalk_20240331_192817883](https://github.com/706-Camille/OperatingSystem/assets/123271815/ea515815-e3cb-4a1e-b3a4-d3fdf3bc4838)  
+
+## OS의 GOALS
+1. transparency (투명성) : 모든 프로세스는 자신이 모든 물리 메모리를 이용할 수 있어야 한다. OS가 가상화하고 간섭하는 사실을 몰라야 한다.  HW(MMU)의 도움   
+2. efficiency (효율성) : 프로세스 전환 비용 최소화, 시간적, 공간적 비용 최소화. HW(TLB)의 도움
+3. protection (보호) : 프로세스는 OS를 훼손/변경 혹은 영향을 줄 수 없다.
+   프로세스는 다른 프로세스를 훼손/변경 혹은 영향을 줄 수 없다. -> isolate(격리)
+
+---  
+
+# Address Translation (Dynamic Relocation)
+LDE, (System call 발생 시, 타이머 인터럽트 발생 시)에는 OS가 프로그램의 실행에 관여하는 방식. 즉 하드웨어의 지원과 OS의 관리로 CPU를 효율적으로 제어하는 가상화 방법.  
+LDE에 대한 일반적인 접근 방식에 메모리 가상화를 도입할 수 있는 방법은 Address Translation 이다.  
+주소 변환을 통해 하드웨어는 virtual address(가상 주소)를 physical address(실제 주소)로 변환.  
+
+## Assumptions
+1. 프로세스는 연속적인 메모리 공간을 사용한다.
+2. 프로세스가 필요한 메모리는 항상 실제 메모리보다 작다
+3. 모든 프로세스는 같은 크기의 메모리를 사용한다.
+
+## Dynamic (Hardware-based) Relocation
+-base, bounds (limit) 레지스터를 활용. (CPU에 존재하는 MMU 하드웨어) 
+-실제 메모리 주소 = 가상주소 + base 레지스터
+-가상주소의 값이 bounds(limit)보다 크면 protection을 위해 오류 발생.
+
+![KakaoTalk_20240331_202159272](https://github.com/706-Camille/OperatingSystem/assets/123271815/9d6fe41a-d3a7-490d-bdb2-48d1dae51408)  
+![KakaoTalk_20240331_202607432](https://github.com/706-Camille/OperatingSystem/assets/123271815/7423fb65-82ec-44b8-9799-1c703c898e00)  
+
+ex)
+<img width="494" alt="image" src="https://github.com/706-Camille/OperatingSystem/assets/123271815/7a6121aa-690f-4ba4-9596-62f402cb2dd8">
+
+---
+
+# Segmentation : Generalized Base/Bounds
+- 최적화
+- 사용하지 않는 공간 최적화
+  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/f2253c0e-3b84-46f2-be70-0e88a371edf5)
+
+위의 예에서 가상 메모리의 크기는 16KB입니다. 즉 14비트로 표현할 수 있습니다. 그리고 segment는 총 3개입니다. Code는 00, Heap은 01, Stack은 11로 구별할 수 있습니다. 이를 위해 상위 2개 비트로는 segment를 구분하고 하위 12개의 비트로 offset을 계산할 수 있습니다. 실제로 위의 그림에서 가상 주소 1000을 변환했고 동일한 결과가 나오는 것을 볼 수 있습니다.
+
+## Stack
