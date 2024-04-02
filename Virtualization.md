@@ -238,3 +238,69 @@ ex)
 위의 예에서 가상 메모리의 크기는 16KB입니다. 즉 14비트로 표현할 수 있습니다. 그리고 segment는 총 3개입니다. Code는 00, Heap은 01, Stack은 11로 구별할 수 있습니다. 이를 위해 상위 2개 비트로는 segment를 구분하고 하위 12개의 비트로 offset을 계산할 수 있습니다. 실제로 위의 그림에서 가상 주소 1000을 변환했고 동일한 결과가 나오는 것을 볼 수 있습니다.
 
 ## Stack
+
+---  
+
+# Paging 
+메모리 공간을 관리하는 방법은 두 가지가 있다.
+- segmentation : 메모리 크기를 가변적으로 사용 -> external fragmentation 문제
+- paging : 가상 주소 공간을 가변 크기가 아닌 고정 크기로 나누어서 메모리에 할당.
+
+고정 크기 단위 = page  
+physical memory에서는 page frame  
+
+이점  
+- 유연성 : 힙과 스택의 커지는 방향 관계 없음  
+- 단순함 : 빈 공간 리스트 -> 빈 페이지 선택
+
+## address translation
+  
+![가상주소](https://github.com/706-Camille/OperatingSystem/assets/123271815/9fa345bf-4792-4a57-b3f4-c87c79aa6877)
+
+page table : address translation(주소 변환) 정보를 저장하는 것
+page table은 프로세스마다 존재하는 구조.
+
+가상주소의 구조 -> VPN(virtual Page Number) and offset 
+
+![address_translation](https://github.com/706-Camille/OperatingSystem/assets/123271815/96c3dfc9-812a-4658-89e3-c256cabe3efa)
+
+변환이 필요한 부분? Offset은 동일하다. Page Size가 모두 동일하기 때문에 변환이 필요 없음  
+VPN(virtual page number) -> PFN(page frame number) 변환 필요
+
+Page Table의 크기?    
+32bit 주소 공간, 4KB Page Size의 경우  
+20 bit VPN + 12 bit Offset (4KB = 12bit)  
+페이지의 개수 = 2^20 1,048,575  
+Size(Page Table Entry) = 4byte 이라고 할 때,
+Size(Page Table) = 4 byte * 2 ^ 20 = 4MB -> 한개의 프로세스를 위한 공간  
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/4dc79291-be7b-42a9-89e4-3dba708deb02)
+Page Table Entry의 구성  
+- Valid bit : 유효성
+- Present bit : 물리 메모리에 있는지 여부
+- Protection bit : Read/Write/Execution 여부 (공유)
+- Reference bit : 참조 여부
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/25455d22-cfa9-4bc6-804d-a1a5799a1128)
+
+~~~
+int array[1000];
+
+for(int i = 0; i < 1000; i++) {
+    array[i] = 0;
+}
+~~~
+~~~
+가상주소 
+1024   movl  $0x0, (%edi, %eax, 4) 
+1028   incl  %eax
+1032   cmpl  $0x03e8, %eax
+1036   jne   0x1024
+~~~
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/652376bc-d442-40da-ad81-8c7ab48fb98f)  
+위의 그림은 1000번의 반복 중 5번의 반복의 메모리 접근을 나타낸 그림이다. 한 번의 반복이 아까 어셈블리로 나타내면 4줄의 어셈블리 코드로 나타낸다. 이를 통해 우선 4번의 메모리 접근이 발생합니다. 한 번의 반복이 진행될 때 코드 부분의 page에는 4번의 메모리 접근, 1번 Array 메모리에 접근해서 업데이트, 그리고 5번의 page table 접근이 발생한다. 즉 한 번의 반복을 위해서 10번의 메모리 접근이 발생하는 것. 매우 비효율적!
+
+
+
+
