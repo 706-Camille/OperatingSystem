@@ -301,6 +301,63 @@ for(int i = 0; i < 1000; i++) {
 ![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/652376bc-d442-40da-ad81-8c7ab48fb98f)  
 위의 그림은 1000번의 반복 중 5번의 반복의 메모리 접근을 나타낸 그림이다. 한 번의 반복이 아까 어셈블리로 나타내면 4줄의 어셈블리 코드로 나타낸다. 이를 통해 우선 4번의 메모리 접근이 발생합니다. 한 번의 반복이 진행될 때 코드 부분의 page에는 4번의 메모리 접근, 1번 Array 메모리에 접근해서 업데이트, 그리고 5번의 page table 접근이 발생한다. 즉 한 번의 반복을 위해서 10번의 메모리 접근이 발생하는 것. 매우 비효율적!
 
+--- 
 
+# TLB ( translation-lookaside buffer ) : adress-translation cache  
 
+페이지 테이블 접근을 위한 메모리 읽기 작업은 엄청난 성능 저하를 유발.  
+핵심 질문 : 어떻게 주소 변환 속도를 빠르게 할까. -> 페이징에서 발생하는 추가 메모리 참조를 피해야함.
+
+- TLB 는 MNU의 일부이다.
+- virtual memory 참조 시, 하드웨어는 먼저 TLB에 원하는 변환 정보가 있는지 확인. 만약 있다면 page table를 참조 하지 않고 주소 변환 (TLB hit).
+- TLB에 원하는 변환 정보가 없다면 (TLB miss), 페이지 테이블에 접근하여 프로세스가 생성한 가상 메모리 참조가 valid하고 접근가능하다면(protection bit check) TLB로 update.
+- TLB miss를 줄여야함 -> TLB hit rate 를 높여야함!
+- spatiai locality(공간 지역성) : 프로그램이 메모리 주소 x를 읽거나 쓰면, x와 인접한 메모리 주소를 접근할 확률이 높다는 사실에 근거.
+- temporal localtity(시간 지역성) : 최근에 접근된 명령어 또는 데이터는 곧 다시 접근될 확률이 높다는 사실에 근거.
+- TLB 는 크기가 작을수록 빠르다. 캐시의 크기 <----> 속도 trade off 관계
+- fully associative(완전 연관) 방식
+
+### CISC (complex-instruction set computers) : TLB miss 를 하드웨어가 처리. 하드웨어가 페이지 테이블에 대한 명확한 정보를 가지고 있어야함.  
+ex) x86 CPU : multi-level page table 사용.  
+
+## RISC (reduced instruction set computing) : software-managed TLB  
+TLB miss -> 하드웨어는 exception 발생시킨다. -> 커널모드 -> trap handler 실행 ( 페이지 테이블을 검색하여 변환 정보를 찾고 -> TLB 접근 가능한 특권명령어로 TLB 갱신 후 리턴)  
+TLB miss handler를 접근하는 과정에서 TLB miss가 발생할 수 있음. 해법은 두가지
+- TLB miss handler의 주소를 '물리' 주소로 표시 unmap 되어 있으므로 TLB miss가 나지 않음.
+- TLB의 일부를 핸들러 코드 주소를 저장하는데 영구히 할당하는것. 항상 hit 됨 (wired)  
+
+## 문맥 교환 시 TLB 내용을 어떻게 관리하는가  
+문맥 교환 시, 기존 TLB 내용을 지우는 것 (valid bit를 0으로 만드는 것), 비용이 너무 큼. ASID (address space Identifier) 도입. -> process 들이 TLB 공간을 공유할 수 있음.  
+valid bit (TLB 내용이 유효한지) , ASID ( 프로세스 별로 TLB 변환 정보를 구분할 수 있다 ), protection bit (r-x 권한)
+
+## cache replacement 정책
+LRU (least recently used) : 지역성을 최대한 활용하는 것이 목적. 사용되지 않은지 오래된 항목일수록, 앞으로도 사용될 가능성이 작으며, 교체 대상으로 적합하다는 가정에 근거.
+
+---  
+
+# small tables
+___핵심 질문 : page table을 어떻게 더 작게 만들까___   
+
+페이징의 두 번째 문제점은 pagetable의 크기이다. 예를들어 페이지의 크기가 4KB(2^12)이고 페이지 테이블의 각 항목의 크기는 4byte인 32bit 주소 공간을 가정해보자.  
+address space에는 대략 백만개(2^32 / 2 ^12)의 가상 페이지가 존재할 것이다. 여기에 page table의 엔트리 크기를 곱하면 4byte * 2 ^ 20 = 4MB가 된다.  
+프로세스가 100개라면 400MB이다. 메모리 부담을 해결할 수 있는 방법을 알아보자.  
+
+## 페이지 크기를 더 키운다면?  
+페이지 테이블의 크기를 간단하게 줄일 수 있는 방법이 있다. 페이지의 크기를 증가시키는 것이다.  
+ex) page의 크기를 16KB로 키운다면, VPN은 18bit offset은 14bit, page table의 크기는 2^18 * 4 byte = 1MB.  
+하지만 부작용을 수반한다. 페이지 내부 공간이 증가하면서 internal fragmentation 문제 발생.  
+
+## hybrid 접근 방법 : paging 과 segment
+- 두가지 방법을 결합하여 페이지 테이블 크기를 줄이는 방법.
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/aa8dc6e9-a13c-471a-8bc6-0676c49b6cc9)  
+위와 같이 16KB의 가상 주소 공간을 가지며 page 크기가 1KB인 상황을 가정해보자. Code 부분에서 1개의 page, heap 부분에서 1개의 page, stack에서 2개의 페이지를 사용하고 있다. 그리고 각각의 page는 실제 메모리에 할당되어 있습니다. 위의 상태를 보면 현재 page table이 얼마나 비효율적 인지 알 수 있다. 총 16개의 page entry가 존재할 수 있지만 정작 사용하는 것은 4개인데도 불구하고 page table은 모든 공간을 유지하고 있다. 이 상황에서 segmentation 기법에서 사용하는 base, limit 레지스터를 활용하여 메모리 낭비를 줄여보자. 실제 segmentation에서와는 다르게 base, limit 레지스터를 각 segment의 page table에 접근할 수 있도록 사용한다. base 레지스터는 page table을 가리키는 데 사용하고 limit 레지스터는 page table의 끝을 나타낼 수 있다.  
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/b60f59e1-49aa-4f3b-b379-b01eab957dfd)
+
+page의 크기가 4KB, 32bit 가상 주소공간을 갖는 시스템에서 4개의 segment로 분할된 주소 공간  
+SN (세그멘트 비트) 2bit, VPN, offset으로 구성  
+드문드문 사용되는 (sparsely used) 힙의 경우에는 페이지 테이블의 낭비를 면치 못할 수가 있다. 또 외부 단편화를 유발한다.  
+
+## Multi Level Page Table  
 
