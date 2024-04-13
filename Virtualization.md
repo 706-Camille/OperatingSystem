@@ -360,4 +360,98 @@ SN (세그멘트 비트) 2bit, VPN, offset으로 구성
 드문드문 사용되는 (sparsely used) 힙의 경우에는 페이지 테이블의 낭비를 면치 못할 수가 있다. 또 외부 단편화를 유발한다.  
 
 ## Multi Level Page Table  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/8f9598ce-d6e9-42c3-bee7-04767fdf55b6)  
 
+multi level page table의 기본적인 아이디어는 page table을 page 단위로 자른 뒤 하나라도 유효한 entry가 없다면 해당 page table를 유지하지 않는 것. 이러한 것을 처리하기 위해 multi level page table에는 page directory라는 개념을 도입한다. Page directory는 page table의 page가 어디에 있는지 (PFN), valid bit는 해당 page table에 유효한 page가 있는지를 알려준다.  
+
+1. multi level page table은 사용된 주소 공간의 크기에 비례하여 페이지 테이블 공간이 할당된다.
+2. 페이지 테이블을 페이지 크기로 분할함으로써 메모리 관리가 매우 용이하다. 선형 페이지 테이블은 연속된 물리공간을 찾는 것이 쉽지가 않다. 멀티 레벨 페이징은 page directory를 활용하여 각 페이지 테이블 페이지들의 위치를 파악한다. 페이지 테이블의 각 페이지들이 물리메모리에 산재해 있더라도 디렉터리를 이용하여 그 위치를 파악할 수 있다. 즉 연속적인 공간할당이 필요 없다. -> 공간 할당이 매우 유연하다.
+
+### A Detailed Multi Level Example
+Page의 크기가 64바이트이고 PTE의 크기가 4바이트인 16KB 주소공간을 갖는 시스템으로 예를 들어보자. 16KB = 2^14, 즉 주소 공간을 14비트로 나타내며 page 크기가 64바이트이므로 VPN으로 8비트, offset으로 6비트를 사용한다. 그리고 만약 linear page table을 사용한다면 page table 하나당 256개의 PTE가 존재할 것.  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/729e386c-5df3-4fd6-9551-2f1f70a51309)  
+
+Multi Level Page Table을 사용하면  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/ed0fc36f-6693-42c7-921e-ee1ca0848e0d)  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/aabc0464-6793-4970-ae7b-42ac0f4ac76c)  
+linear page table을 사용한다면, 16개의 page table을 유지해야하니 메모리를 낭비하게 된다.  
+page directory를 사용하게 되면, vaild bit 가 0인 page table의 page들을 메모리 할당하지 않게 된다.   
+
+### More Than Two levels  
+page의 크기가 512바이트, PTE의 크기가 4바이트인 30비트 가상 주소 공간이 있다고 생각해보자. 그럼 VPN으로 21비트, offset으로 9비트를 사용하는 즉 아래와 같은 구조로 가상 주소가 구성된다.  
+  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/a7f2719a-da50-45a5-8840-4d6890dcb7ed)
+
+이렇게 되면 다시 page directory를 위해서 128 page 분량의 연속된 메모리가 필요하다. page table의 크기를 줄이고자 고안했던 방법인데 근본 취지가 훼손된 셈이다. 이 문제를 해결하기 위해서 페이지 디렉터리 자체를 멀티 페이지로 나누어서 트리의 단계를 늘린다.  
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/bc1c6447-16b7-4066-be66-4ed0fa815740)  
+
+__멀티 레벨 페이지 테이블의 제어 흐름__
+![KakaoTalk_20240414_022844060](https://github.com/706-Camille/OperatingSystem/assets/123271815/4cdff04b-2817-46bd-9053-ee23ea1b051e)
+
+---
+
+## 물리 메모리 크기의 극복 : 메커니즘
+__물리 메모리 이상으로 나아가기 위해서 어떻게 할까?__   
+Disk의 Swap 공간이 추가되면 운영체제는 실행되는 각 프로세스들에게 큰 가상 메모리가 있는 것 같은 환상을 줄 수 있다.
+
+### Swap Space
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/0f9fd164-f47d-4c87-ba2e-a4324d534e20)  
+가장 먼저할 일은 디스크에 페이지들을 저장할 수 있는 일정 공간을 확보하는 것. 이 용도의 공간을 Swap Space라고 한다. 메모리 페이지를 읽어서 이곳에 쓰고 (swap out), 여기서 페이지를 읽어 메모리에 탑재 시킨다 (swap in). 운영체제는 스왑 공간에 있는 모든 페이지들의 디스크 주소를 기억해야 한다.
+
+### present Bit  
+- 하드웨어는 먼저 가상주소에서 VPN을 추출한 후에 TLB에 해당 정보가 있는지 검사한다.   
+- if TLB hit, 물리 주소를 얻은 후에 메모를 참조한다.
+- if TLB miss, page table의 메모리 주소를 파악하고 PDBR에 VPN을 인덱스로 하여 PTE를 추출한다. -> PTE에서 valid bit가 1이고 present bit가 1이라면 ( 물리 메모리에 존재한다면) 하드웨어는 PTE에서 PFN을 추출한다.
+- if present bit = 0, 물리 메모리에 해당 페이지가 존재하지 않고 디스크 어딘가에 존재한다는 것. page fault 발생 운영체제로 제어권을 넘겨 page-fault handler가 실행된다.
+
+### page fault  
+Page fault가 발생하면 올바른 disk 주소로 이동하여 올바른 page를 메모리로 가져와야 한다. OS는 disk 주소에 대한 정보를 page의 PTE에서 알아낼 수 있다. 알아낸 주소로 page를 가져오면 메모리에 할당하고 PTE의 present bit를 업데이트. Disk에서 page를 swap할때 disk I/O가 진행 중인 동안에는 프로세스는 blocked 상태가 된다. 따라서 I/O 작업과 다른 프로세스의 실행을 overlap 시키는 것이 하드웨어를 최대한 효율적으로 사용하는 방법이다.  
+  
+### 메모리에 빈 공간이 없으면 ?  
+교체 페이지를 선택하는 것을 page-replacement policy (페이지 교체 정책) 이라고 한다. ( 다음 장에 배울것)
+
+### Page fault 제어 흐름의 알고리즘 (하드웨어)  
+'''
+// VPN 추출
+VPN = (VirtualAddress & VPN_MASK) >> SHIFT
+// 추출한 VPN에 대한 주소변환 정보가 TLB에 있는지 확인
+(Success, TLBEntry) = TLB_Lookup(VPN)
+// TLB에 있으면
+if (Success == True)
+    if (CanAccess(TLBEntry.ProtectBits) == True)
+        Offset = VirtualAddress & OFFSET_MASK
+        PhyAddr = (TLBEntry.PFN << SHIFT) | OFFSET
+        Register = AccessMemory(PhysAddr)
+    else
+        RaiseException(PROTECTION_FAULT)
+// TLB에 없으면
+else
+    // Page Table에 접근하여 page 위치 알아온다
+    PTEAddr = PTBR + (VPN * sizeof(PTE))
+    PTE = AccessMemory(PTEAddr)
+    if (PTE.Valid == False)
+        RaiseException(SEGMENTATION_FAULT)
+    else
+        if (CanAccess(PTE.ProtectBits) == False)
+            RaiseException(PROTECTION_FAULT)
+        // Present Bit가 True라면 (메모리에 page table 존재)
+        else if (PTE.Present == True)
+            TLB_Insert(VPN, PTE.PFN, PTE.ProtectBits)
+            RetryInstruction()
+        // Present Bit가 False라면 (Swap 공간에 page table 존재)
+        else if (PTE.Present == False)
+            // Page Fault 발생
+            RaiseException(PAGE_FAULT)
+'''
+'''
+// Page를 가지고 와서 할당할 메모리 공간을 찾는다
+PFN = FindFreePhysicalPage()
+if (PFN == -1)
+    PFN = EvictPage()
+// Disk에서 Page Table 데이터를 가지고 온다
+DiskRead(PTE.DiskAddr, PFN)
+// Present Bit를 True로 수정
+PTE.present = True
+PTE.PFN = PFN
+RetryInstruction()
+'''
