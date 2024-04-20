@@ -204,6 +204,7 @@ fairness = C1 / C2 = 19.9999 / 20 = 1
 3. protection (보호) : 프로세스는 OS를 훼손/변경 혹은 영향을 줄 수 없다.
    프로세스는 다른 프로세스를 훼손/변경 혹은 영향을 줄 수 없다. -> isolate(격리)
 
+quiz 개념 : BSS 는 initialize 되지 않은 DATA 영역.
 ---  
 
 # Address Translation (Dynamic Relocation)
@@ -232,12 +233,22 @@ ex)
 # Segmentation : Generalized Base/Bounds
 - 최적화
 - 사용하지 않는 공간 최적화
-  
+
+프로세스의 전체 주소 공간을 한 번에 연속적으로 할당하기 때문에 Heal Stack 사이의 공간이 사용되고 있지 않아도 할당해야 하는 문제가 발생. -> Segmentation, CPU의 MMU에 base, limit 레지스터가 하나만 존재하는 것 보단 base, limit 레지스터를 한 쌍으로 segment를 표현하면 어떨까? 일반적인 주소 공간은 3개의 segment(Code,Stack,Heap)으로 구성된다. OS는 메모리에 3개의 segemnt를 배치하여 heap, stack 사이의 공간을 낭비하지 않도록 하는것.  
+
+![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/92aee9f7-187c-4756-af3b-292e6d74be03)  
+segment를 사용하려면 base,limit 레지스터 쌍이 segment마다 필요하다.  
+
 ![image](https://github.com/706-Camille/OperatingSystem/assets/123271815/f2253c0e-3b84-46f2-be70-0e88a371edf5)
 
-위의 예에서 가상 메모리의 크기는 16KB입니다. 즉 14비트로 표현할 수 있습니다. 그리고 segment는 총 3개입니다. Code는 00, Heap은 01, Stack은 11로 구별할 수 있습니다. 이를 위해 상위 2개 비트로는 segment를 구분하고 하위 12개의 비트로 offset을 계산할 수 있습니다. 실제로 위의 그림에서 가상 주소 1000을 변환했고 동일한 결과가 나오는 것을 볼 수 있습니다.
-
+위의 예에서 가상 메모리의 크기는 16KB입니다. 즉 14비트로 표현할 수 있습니다. 그리고 segment는 총 3개입니다. Code는 00, Heap은 01, Stack은 11로 구별할 수 있습니다. 이를 위해 상위 2개 비트로는 segment를 구분하고 하위 12개의 비트로 offset을 계산할 수 있습니다. 실제로 위의 그림에서 가상 주소 1000을 변환했고 동일한 결과가 나오는 것을 볼 수 있습니다.  
+  
 ## Stack
+stack은 메모리 공간을 거꾸로 확장해나간다.  
+따라서 offset을 base에 더하는 것이 아닌, base - MAX(segment size)에 결과값에 offset을 더해서 주소를 구한다.  
+
+## problem
+segmentation의 문제점 : external fragmentation (외부 단편화) 문제가 발생. free space management를 어떻게 할 것 인가?. 다음 장에서 살펴보자.  
 
 ---  
 
