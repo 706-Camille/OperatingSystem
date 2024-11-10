@@ -422,7 +422,7 @@ Page fault가 발생하면 올바른 disk 주소로 이동하여 올바른 page�
 교체 페이지를 선택하는 것을 page-replacement policy (페이지 교체 정책) 이라고 한다. ( 다음 장에 배울것)
 
 ### Page fault 제어 흐름의 알고리즘 (하드웨어)  
-' ' '
+```cpp
 // VPN 추출
 VPN = (VirtualAddress & VPN_MASK) >> SHIFT
 // 추출한 VPN에 대한 주소변환 정보가 TLB에 있는지 확인
@@ -453,16 +453,4 @@ else
         else if (PTE.Present == False)
             // Page Fault 발생
             RaiseException(PAGE_FAULT)
-' ' '
-' ' '
-// Page를 가지고 와서 할당할 메모리 공간을 찾는다
-PFN = FindFreePhysicalPage()
-if (PFN == -1)
-    PFN = EvictPage()
-// Disk에서 Page Table 데이터를 가지고 온다
-DiskRead(PTE.DiskAddr, PFN)
-// Present Bit를 True로 수정
-PTE.present = True
-PTE.PFN = PFN
-RetryInstruction()
-' ' '
+
